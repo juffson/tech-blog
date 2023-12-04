@@ -1,4 +1,4 @@
-# Effective Rust
+# 高效 Rust (Effective Rust)
 ## 介绍
 > "The code is more what you'd call 'guidelines' than actual rules." – Hector Barbossa
 
@@ -39,4 +39,54 @@ help: you can convert an `i32` to an `i16` and panic if the converted value does
    |
 14 |         let y: i16 = x.try_into().unwrap();
    |                       ++++++++++++++++++++
+```
+这是因为 rust 是强规则约束，针对类型的转化，rust 会在编译时检查，相比 C++，在针对安全的转换上，rust 编译时依然会报错，推荐在类型转换时，明确转换的过程。
+```
+   let x = 42i32; // Integer literal with type suffix
+   let y: i64 = x;
+```
+```
+   error[E0308]: mismatched types
+   --> use-types/src/main.rs:23:22
+      |
+   23 |         let y: i64 = x;
+      |                ---   ^ expected `i64`, found `i32`
+      |                |
+      |                expected due to this
+      |
+   help: you can convert an `i32` to an `i64`
+      |
+   23 |         let y: i64 = x.into();
+      |                       +++++++
+```
+后文会对类型转换详细说明
+#### 聚合类型（Aggregate Types）
+rust 有以下聚合的类型
+- 数组 (Arrarys), 存储同一类型的多个值，数组的长度是固定的（即在编译时已知），例如[u32; 4] 是 4 个 4 字节整数
+- 元组 (Tuples), 存储多个异质（heterogeneous）类型，类型和长度都是在编译时已知。
+- 结构体 (Structs),保存编译时已知的异构类型的实例，但允许整体类型和单个字段都用名称引用。
+
+"Tuple struct" 是结构体（struct）和元组（tuple）的结合体：它既有整体类型的名称，但没有为单个字段指定名称 - 它们通过数字来引用，例如 s.0、s.1 等。
+
+在编程中，"tuple struct" 是一种特殊类型的结构体，它的字段没有具体的名称，而是通过索引号来引用。这种设计使得 tuple struct 的字段可以按照顺序进行访问和操作，而不需要使用具体的字段名。这在某些情况下可以提供更灵活和简洁的代码实现方式。
+```
+   struct TextMatch(usize, String);
+   let m = TextMatch(12, "needle".to_owned());
+   assert_eq!(m.0, 12);
+```
+这就引出了 Rust 类型系统中的一颗明珠，即 "enum"（枚举）。
+
+从基本形式来看，可能很难看出它有什么令人兴奋的地方。与其他编程语言类似，"enum" 允许您定义一组互斥的值，可能附带数值或字符串值。
+
+在 Rust 中，"enum" 是一种特殊的数据类型，它允许您定义一组具有不同取值的变体。每个变体可以附带额外的数据，也可以是单独的单元类型。这使得您可以更清晰地表示某个值的可能状态，并且可以根据不同的状态采取不同的逻辑处理。
+
+"enum" 在 Rust 中被广泛用于处理模式匹配、状态转换、错误处理等场景，它是 Rust 强大而灵活的类型系统中的一个重要组成部分。
+```
+    enum HttpResultCode {
+        Ok = 200,
+        NotFound = 404,
+        Teapot = 418,
+    }
+    let code = HttpResultCode::NotFound;
+    assert_eq!(code as i32, 404);
 ```
