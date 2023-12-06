@@ -90,3 +90,81 @@ rust 有以下聚合的类型
     let code = HttpResultCode::NotFound;
     assert_eq!(code as i32, 404);
 ```
+由于每个 enum 定义都创建了一个不同的类型，因此可用于提高 bool 入参的函数的可读性和可维护性。而不是：
+
+```
+   print_page(/* both_sides= */ true, /* colour= */ false);
+```
+比如使用枚举对
+```
+  pub enum Sides {
+        Both,
+        Single,
+    }
+
+    pub enum Output {
+        BlackAndWhite,
+        Colour,
+    }
+
+    pub fn print_page(sides: Sides, colour: Output) {
+        // ...
+    }
+```
+在调用时更类型安全，更容易阅读：
+```
+        print_page(Sides::Both, Output::BlackAndWhite);
+```
+对比上面 bool 参数的版本，当用户传错参数顺序时，编译阶段便会发现告警
+```
+error[E0308]: mismatched types
+  --> use-types/src/main.rs:89:20
+   |
+89 |         print_page(Output::BlackAndWhite, Sides::Single);
+   |                    ^^^^^^^^^^^^^^^^^^^^^ expected enum `enums::Sides`, found enum `enums::Output`
+error[E0308]: mismatched types
+  --> use-types/src/main.rs:89:43
+   |
+89 |         print_page(Output::BlackAndWhite, Sides::Single);
+   |                                           ^^^^^^^^^^^^^ expected enum `enums::Output`, found enum `enums::Sides`
+```
+
+#### 带字段的 enums
+相比于传统的 enum 类型，rust 的 enum 类型真正强大的地方在于，可以当作 ADT（algebraic data type）使用，对比 C/C++ 中，就像结合了 union 和 enum，并且类型安全。
+基于这种模型，数据结构的不变量可以编码到 Rust 的类型系统中；不符合这些不变量的状态甚至不会编译。设计良好的 enum 在可读性和编译性上都有非常大的优势。
+```
+pub enum SchedulerState {
+    Inert,
+    Pending(HashSet<Job>),
+    Running(HashMap<CpuId, Vec<Job>>),
+}
+```
+仅从类型定义中，可以合理地猜测 Jobs 在 Pending 状态下排队，直到调度器完全处于活动状态，此时它们被分配到一些每个 CPU 池。
+
+这就是该章节的中心主题，即使用 Rust 的类型系统来表达与软件设计相关的概念。
+
+使用 enum 封装后，下文例子中所述的注释其实是不需要的
+```
+struct DisplayProps {
+    x: u32,
+    y: u32,
+    monochrome: bool,
+    // `fg_colour` must be (0, 0, 0) if `monochrome` is true.
+    fg_colour: RgbColour,
+}
+```
+使用 enum 封装替换后：
+```
+#[derive(Debug)]
+enum Colour {
+    Monochrome,
+    Foreground(RgbColour),
+}
+
+struct DisplayProperties {
+    x: u32,
+    y: u32,
+    colour: Colour,
+}
+```
+这个小例子说明了一条关键建议：不要在代码中表达无意义的状态。使用有效的组合，通过编译器检查错误，能让代码更精简、更安全。
