@@ -179,3 +179,62 @@ Rust 有三种不同的 Fn*特征，它们之间表达了围绕这种环境捕�
 
 因此，在编写接受闭包的代码时，**使用最通用的 Fn 特性**  ，为调用者提供最大的灵活性——例如，对于只使用一次的闭包，接受 FnOnce。
 
+
+### Traits
+Fn* traits 比裸函数指针更灵活，但它们仍然只能描述单个函数的行为，甚至只能用函数的签名来描述。
+
+然而，它们本身就是描述 Rust 类型系统中行为的另一种机制的例子，即 trait。trait 定义了一组相关方法，一些底层项目公开提供这些方法。trait 中的每个方法也有一个名称，提供了一个标签，允许编译器消除具有相同签名的方法的歧义，更重要的是，它允许程序员推断方法的意图。
+
+Rust trait 大致类似于 Go 和 Java 中的“接口”，或 C++ 中的“抽象类”（都是虚拟方法，没有数据成员）。trait 的实现必须提供所有方法（但 trait 定义可以包括默认实现，项目 13），也可以有这些实现使用的相关数据。这意味着代码和数据以某种面向对象的方式以通用的抽象方式封装在一起。
+
+接受 struct 并调用方法的代码仅限于使用该特定类型。如果有多种类型实现共同行为，那么定义封装该共同行为的 trait，并让代码使用该 trait 的方法而不是特定 struct 上的方法会更灵活。
+
+与其他受面向对象影响的语言是相同的设计建议：**如果有预期内的灵活性需要，使用 trait 类型而不是具体类型。**
+
+有时，您想在类型系统中区分一些行为，但不能表示为特征定义中的某些特定方法签名。例如，考虑对集合进行排序的 trait；实现可能是稳定的（比较相同的元素将在排序前后以相同的顺序出现），但无法在 sort 方法参数中表达这一点。
+
+在这种情况下，仍然值得使用类型系统来跟踪此要求，使用 marker trait。
+
+```
+pub trait Sort {
+    /// Re-arrange contents into sorted order.
+    fn sort(&mut self);
+}
+
+/// Marker trait to indicate that a [`Sortable`] sorts stably.
+pub trait StableSort: Sort {}
+```
+marker trait 没有方法，但实现仍然必须声明它正在实现该 trait 
+
+一旦行为作为 trait 被封装到 Rust 的类型系统中，有两种方法可以使用：
+
+- 作为一种 trait 绑定，它限制了在编译时可以接受的通用数据类型或方法的类型，或
+- 作为 trait 对象。它限制了哪些类型可以在运行时存储或传递给方法。
+项目 12 更详细地讨论了这些之间的权衡。
+
+trait 绑定表示由某种类型 T 参数化的通用代码只能在该类型 T 实现某些特定 trait 时使用。trait 绑定的存在意味着泛型的实现可以使用该 trait 的方法，因为知道编译器将确保任何编译的 T 确实有这些方法。此检查发生在编译时，当泛型被单态化时（Rust 的术语 C++ 将称为“模板实例化”）。
+
+对目标类型 T 的这种限制是显式的，在 trait bound 中编码：该 trait bound 只能由满足 trait bounds 的类型来实现。这与 C++ 中的等效情况形成鲜明对比，在 C++ 中，template<typename T>中使用的类型 T 的约束是隐式的; C++ 模板代码仍然只有在所有引用方法在编译时都可用时才能编译，但检查纯粹基于方法和签名。
+
+对显式 trait 边界的需求也意味着很大一部分泛型使用 trait 边界。要了解为什么会这样，请将观察转过来，并考虑使用 T 上没有 trait 边界的 struct Thing<T>可以做什么。如果没有 trait 边界，Thing 只能执行适用于任何类型 T 的操作；这允许容器、集合和智能指针，但不允许其他操作。任何使用 T 型的东西都需要一个 trait 绑定。
+```
+pub fn dump_sorted<T>(mut collection: T)
+where
+    T: Sort + IntoIterator,
+    T::Item: Debug,
+{
+    // Next line requires `T: Sort` trait bound.
+    collection.sort();
+    // Next line requires `T: IntoIterator` trait bound.
+    for item in collection {
+        // Next line requires `T::Item : Debug` trait bound
+        println!("{:?}", item);
+    }
+}
+```
+因此，这里的建议是使用 trait 边界来表达对泛型中使用的类型的要求，但建议很容易遵循——编译器将迫使您无论如何遵守它。
+
+特征对象是利用特征定义的封装的另一种方式，但在这里，在运行时而不是编译时选择不同的可能的特征实现。这种动态调度类似于在 C++ 中使用虚拟函数，在封面下，Rust 有“vtable”对象，这些对象大致类似于 C++ 中的对象。
+
+
+
