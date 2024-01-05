@@ -2,3 +2,4 @@
 - [Effective Rust -- 类型 (enum&option)](rust/effective-rust/types)
 * [Effective Rust -- 抽象封装 (函数、闭包和 traits)](rust/effective-rust/types_2)
 * [Effective Rust -- Option & Result](rust/effective-rust/types_3)
+* [Effective Rust -- Error 处理](rust/effective-rust/types_4)
