@@ -23,3 +23,31 @@ fn main() {
 }
 ```
 在上面的示例中，maybe_value 是一个 None 值的 Option，通过调用 unwrap_or 方法并传入 default_value 作为默认值，最终得到了 value 的值为 42。
+
+## 包管理
+### 使用 features 进行条件编译和版本特性控制
+我们可以用 rust 的 features 特性，控制我们希望提供到某个版本时，有哪些特性；同时也可以在引入包时，通过指定 features 来控制这些特性的版本。
+
+#### 定义包的 features
+
+在使用 features 特性时，我们可以在 Cargo.toml 中指定这些特性的版本。这里的 feature（在现在的版本 rustc 1.75.0）中不支持和 package 同名，在 nightly 版本中可以同名
+```toml
+[features]
+my_feature =  []  # 定义一个 feature
+my_feature2 = ["my_feature"] # 定义一个 feature，依赖了其他 feature ,开启了该 feature，那么 my_feature 特性也会开启
+```
+
+
+#### 按 features 依赖
+在依赖的地方，我们可以通过 Cargo.toml 的包依赖配置按特性开启。
+
+```toml
+[dependencies]
+my_package = { version = "1.0.0", features = ["my_feature"] }
+```
+
+如果我们不想加入到构建版本中，可以通过 options 不进行编译
+```toml
+[dependencies]
+my_package = { version = "1.0.0", features = ["my_feature"], optional = true }
+```
